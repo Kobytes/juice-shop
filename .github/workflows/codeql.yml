@@ -38,6 +38,10 @@ jobs:
     - name: Install dependencies
       run: npm install
 
+    - name: Check for critical npm vulnerabilities
+      run: |
+        npm audit --audit-level=critical || (echo "❌ Vulnérabilités critiques détectées dans les packages npm" && exit 1)
+
     - name: Build project
       run: |
         npm run build:frontend
@@ -47,4 +51,55 @@ jobs:
       uses: github/codeql-action/analyze@v3
       with:
         category: "/language:${{matrix.language}}"
+
+    - name: Check CodeQL critical vulnerabilities
+      run: |
+        critical=$(gh api repos/${{ github.repository }}/code-scanning/alerts --jq '[.[] | select(.rule.security_severity_level=="critical" or .rule.severity=="error")] | length' || echo "0")
+        if [ "$critical" -gt 0 ]; then
+          echo "❌ CodeQL a détecté $critical vulnérabilité(s) critique(s)"
+          exit 1
+        fi
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dast:
+    name: DAST Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Build project
+      run: |
+        npm run build:frontend
+        npm run build:server
+
+    - name: Start application
+      run: |
+        npm start &
+        sleep 30
+        timeout 60 bash -c 'until curl -f http://localhost:3000; do sleep 2; done'
+
+    - name: Run OWASP ZAP Baseline Scan
+      uses: zaproxy/action-baseline@v0.10.0
+      with:
+        target: 'http://localhost:3000'
+
+    - name: Check ZAP critical vulnerabilities
+      run: |
+        critical=$(jq '[.site[]?.alerts[]? | select(.risk == "High" or .risk == "Critical")] | length' report_json.json 2>/dev/null || echo "0")
+        if [ "$critical" -gt 0 ]; then
+          echo "❌ ZAP a détecté $critical vulnérabilité(s) critique(s)"
+          exit 1
+        fi
 
