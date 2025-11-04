@@ -1,0 +1,20 @@
+echo "🔍 Vérification des secrets et vulnérabilités..."
+echo ""
+
+# 1. Détection de secrets avec lint-staged (git-secrets + detect-secrets)
+echo "🔐 Scan des secrets avec lint-staged (git-secrets + detect-secrets)..."
+npx lint-staged || {
+  echo "⚠️  Des secrets potentiels ont été détectés (mais le commit continue pour démonstration)"
+  true  # On continue même avec l'échec, juste pour montrer
+}
+echo ""
+
+# 2. Audit npm (affiche les vulnérabilités sans les corriger)
+echo "🔒 Audit des vulnérabilités npm..."
+npm audit --audit-level=moderate 2>&1 || {
+  echo ""
+  echo "⚠️  npm audit a détecté des vulnérabilités (mais le commit continue pour démonstration)"
+  echo "   Le projet Juice Shop contient intentionnellement des vulnérabilités pour des fins éducatives."
+  true  # On continue même avec l'échec, juste pour montrer
+}
+echo ""
