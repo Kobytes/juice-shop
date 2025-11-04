@@ -5,8 +5,6 @@ on:
     branches: [ "master"]
   pull_request:
     branches: [ "master"]
-  schedule:
-    - cron: '0 0 * * 0'  # Tous les dimanches à minuit
 
 jobs:
   analyze:
@@ -36,10 +34,9 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-        cache: 'npm'
 
     - name: Install dependencies
-      run: npm ci
+      run: npm install
 
     - name: Build project
       run: |
